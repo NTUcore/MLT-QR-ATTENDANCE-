@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1e40af">
-    <title>نظام حضور NTU - الإصدار المحلي</title>
+    
     
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
