@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1e40af">
-    
+    <title>نظام حضور NTU - الإصدار المصلح</title>
     
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -73,8 +73,8 @@
     </div>
 
     <script>
-        // --- IndexedDB Local Database Management ---
-        const DB_NAME = 'NTU_Attendance_LocalDB_V3';
+        // --- Database Logic ---
+        const DB_NAME = 'NTU_Attendance_LocalDB_V4';
         const DB_VERSION = 1;
         let db;
 
@@ -83,9 +83,7 @@
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 request.onupgradeneeded = (e) => {
                     const database = e.target.result;
-                    if (!database.objectStoreNames.contains('members')) {
-                        database.createObjectStore('members', { keyPath: 'uid' });
-                    }
+                    if (!database.objectStoreNames.contains('members')) database.createObjectStore('members', { keyPath: 'uid' });
                     if (!database.objectStoreNames.contains('attendance')) {
                         const store = database.createObjectStore('attendance', { keyPath: 'id', autoIncrement: true });
                         store.createIndex('by_date_subject', ['date', 'subject'], { unique: false });
@@ -140,14 +138,12 @@
             })
         };
 
-        // --- Application Logic ---
+        // --- UI Logic ---
         const SUBJECTS = ["طرائق البحث", "الحشرات طبية (نظري)", "الحشرات طبية (عملي)", "نشاطات لا صفية", "ساعة ارشاد", "الكيمياء الحياتية السريرية (نظري)", "الكيمياء الحياتية (عملي)", "الفطريات (نظري)", "الفطريات (عملي)", "امراض الدم (نظري)", "امراض الدم (عملي)", "اللغه إنكليزية"];
-
         let userRole = localStorage.getItem('role') || null;
         let userData = JSON.parse(localStorage.getItem('userData')) || null;
         let html5QrCode = null;
-        let isProcessing = false;
-        let membersCache = {}; 
+        let membersCache = {};
 
         const render = (html) => {
             const root = document.getElementById('app-root');
@@ -158,33 +154,18 @@
         const notify = (msg, isError = false) => {
             const toast = document.createElement('div');
             toast.className = `fixed top-24 left-1/2 -translate-x-1/2 z-[110] px-6 py-3 rounded-2xl shadow-2xl text-white font-bold animate-in flex items-center gap-2 ${isError ? 'bg-red-500' : 'bg-green-600'}`;
-            toast.innerHTML = isError ? `<i data-lucide="alert-circle" size="18"></i> ${msg}` : `<i data-lucide="check-circle" size="18"></i> ${msg}`;
+            toast.innerHTML = `<i data-lucide="${isError ? 'alert-circle' : 'check-circle'}" size="18"></i> ${msg}`;
             document.body.appendChild(toast);
             lucide.createIcons();
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 1500);
         };
 
-        const goBackToHome = () => {
-            if (html5QrCode && html5QrCode.isScanning) {
-                try { html5QrCode.stop(); } catch(e) {}
-            }
-            localStorage.clear();
-            userRole = null; userData = null;
-            window.location.reload(); 
-        };
-
-        const refreshMembersCache = async () => {
-            const members = await dbOps.getAllMembers();
-            membersCache = {};
-            members.forEach(m => { membersCache[m.uid] = m.name; });
-        };
-
         const showLogin = () => {
             render(`
-                <div class="mt-8 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 animate-in">
-                    <h3 class="text-2xl font-black text-center mb-1 text-slate-800">بوابة دخول</h3>
-                    <p class="text-[11px] text-slate-400 font-bold text-center mb-8 italic">يرجى انشاء حساب او تسجيل الدخول لتتمكن من تسجيل حضور</p>
-                    <div class="space-y-4">
+                <div class="mt-8 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 animate-in text-center">
+                    <h3 class="text-2xl font-black mb-1 text-slate-800">بوابة دخول</h3>
+                    <p class="text-[11px] text-slate-400 font-bold mb-8 italic">يرجى انشاء حساب او تسجيل الدخول لتتمكن من تسجيل حضور</p>
+                    <div class="space-y-4 text-right">
                         <input id="stu-name" type="text" placeholder="اسم الطالب الثلاثي" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 ring-blue-500/20 text-lg font-bold">
                         <div class="grid grid-cols-2 gap-2">
                             <input id="stu-pin" type="password" placeholder="رمز الدخول" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 ring-blue-500/20 font-bold">
@@ -204,17 +185,19 @@
                 const name = document.getElementById('stu-name').value.trim();
                 const pin = document.getElementById('stu-pin').value;
                 if (name.split(' ').length < 3) return notify('يرجى كتابة الاسم الثلاثي', true);
-                if (pin !== document.getElementById('stu-confirm').value || pin.length < 4) return notify('تأكد من الرموز', true);
+                if (pin !== document.getElementById('stu-confirm').value) return notify('الرموز غير متطابقة', true);
                 
                 const uid = 'STU_' + Math.random().toString(36).substr(2, 9);
                 const student = { uid, name, role: 'student', stage: 'الثالثة', department: 'مختبرات طبية', pin: pin };
                 await dbOps.addMember(student);
                 localStorage.setItem('role', 'student');
                 localStorage.setItem('userData', JSON.stringify(student));
-                userRole = 'student'; userData = student; showStudent();
+                window.location.reload();
             };
 
-            document.getElementById('open-admin-modal').onclick = () => document.getElementById('admin-modal').classList.add('active');
+            document.getElementById('open-admin-modal').onclick = () => {
+                document.getElementById('admin-modal').classList.add('active');
+            };
         };
 
         const showStudent = () => {
@@ -223,224 +206,107 @@
                     <div class="p-6 text-center border-b bg-slate-50/50">
                         <h2 class="text-xl font-black text-blue-800 mb-4">${userData.name}</h2>
                         <div class="flex justify-between items-center px-4">
-                            <div class="text-right">
-                                <span class="text-[10px] text-slate-400 block font-bold">المرحلة</span>
-                                <span class="text-sm font-black text-slate-700">${userData.stage}</span>
-                            </div>
-                            <div class="text-left">
-                                <span class="text-[10px] text-slate-400 block font-bold">القسم</span>
-                                <span class="text-sm font-black text-slate-700">${userData.department}</span>
-                            </div>
+                            <div class="text-right"><span class="text-[10px] text-slate-400 block font-bold">المرحلة</span><span class="text-sm font-black text-slate-700">${userData.stage}</span></div>
+                            <div class="text-left"><span class="text-[10px] text-slate-400 block font-bold">القسم</span><span class="text-sm font-black text-slate-700">${userData.department}</span></div>
                         </div>
                     </div>
                     <div class="p-8 text-center flex flex-col items-center">
                         <div id="qrcode" class="qr-container mb-8"></div>
                         <p class="text-[10px] text-slate-400 font-bold mb-4 flex items-center gap-1"><i data-lucide="scan-line" size="12"></i> الباركود جاهز للمسح</p>
-                        <button id="back-home-stu" class="w-full py-4 text-blue-600 border border-blue-50 rounded-2xl font-black flex items-center justify-center gap-2 bg-blue-50/30">
-                            <i data-lucide="home"></i> عودة للقائمة الرئيسية
+                        <button id="logout-btn" class="w-full py-4 text-slate-400 border border-slate-200 rounded-2xl font-black flex items-center justify-center gap-2">
+                             خروج
                         </button>
                     </div>
                 </div>
             `);
-            setTimeout(() => {
-                new QRCode(document.getElementById("qrcode"), { text: userData.uid, width: 220, height: 220, colorDark: "#1e40af", correctLevel: QRCode.Level.L });
-            }, 50);
-            document.getElementById('back-home-stu').onclick = goBackToHome;
+            new QRCode(document.getElementById("qrcode"), { text: userData.uid, width: 220, height: 220, colorDark: "#1e40af" });
+            document.getElementById('logout-btn').onclick = () => { localStorage.clear(); window.location.reload(); };
         };
 
         const showAdmin = () => {
             let currentTab = 'scan';
             const draw = () => {
                 render(`
-                    <nav class="flex bg-white p-2 rounded-3xl shadow-xl gap-2 mb-6 sticky top-20 z-50 border border-slate-50">
-                        <button id="tab-scan" class="flex-1 py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${currentTab === 'scan' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}"><i data-lucide="scan" size="18"></i> المسح</button>
-                        <button id="tab-logs" class="flex-1 py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${currentTab === 'logs' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}"><i data-lucide="list-checks" size="18"></i> الحضور</button>
-                        <button id="tab-members" class="flex-1 py-4 rounded-2xl font-black flex items-center justify-center gap-2 ${currentTab === 'members' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400'}"><i data-lucide="users" size="18"></i> الطلاب</button>
+                    <nav class="flex bg-white p-2 rounded-3xl shadow-xl gap-2 mb-6 border">
+                        <button id="tab-scan" class="flex-1 py-4 rounded-2xl font-black ${currentTab === 'scan' ? 'bg-blue-600 text-white' : 'text-slate-400'}">المسح</button>
+                        <button id="tab-logs" class="flex-1 py-4 rounded-2xl font-black ${currentTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-400'}">الحضور</button>
                     </nav>
-                    <div id="admin-content" class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-50 min-h-[480px]"></div>
-                    <button id="back-home-admin" class="w-full mt-8 py-4 bg-white text-blue-600 rounded-2xl font-black flex justify-center gap-2 items-center border border-blue-100">
-                        <i data-lucide="home"></i> عودة للقائمة الرئيسية
-                    </button>
+                    <div id="admin-content" class="bg-white p-6 rounded-[2.5rem] shadow-xl min-h-[400px]"></div>
+                    <button id="admin-logout" class="w-full mt-4 py-3 text-red-500 font-bold">تسجيل خروج الإدارة</button>
                 `);
-                document.getElementById('tab-scan').onclick = () => { currentTab = 'scan'; stopScanner(); draw(); };
-                document.getElementById('tab-logs').onclick = () => { currentTab = 'logs'; stopScanner(); draw(); };
-                document.getElementById('tab-members').onclick = () => { currentTab = 'members'; stopScanner(); draw(); };
-                document.getElementById('back-home-admin').onclick = goBackToHome;
+                document.getElementById('tab-scan').onclick = () => { currentTab = 'scan'; draw(); };
+                document.getElementById('tab-logs').onclick = () => { currentTab = 'logs'; draw(); };
+                document.getElementById('admin-logout').onclick = () => { localStorage.clear(); window.location.reload(); };
 
                 if (currentTab === 'scan') drawScanner();
-                else if (currentTab === 'logs') drawLogs();
-                else drawMembers();
-                lucide.createIcons();
-            };
-
-            const stopScanner = () => { if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} html5QrCode = null; } };
-
-            const registerStudentAttendance = async (sId, subject) => {
-                const realName = membersCache[sId];
-                if (!realName) { notify("طالب غير مسجل محلياً!", true); return false; }
-                const date = new Date().toISOString().split('T')[0];
-                const exists = await dbOps.checkAttendanceExist(sId, subject, date);
-                if (exists) { notify(`مسجل مسبقاً: ${realName}`, true); return true; }
-                
-                await dbOps.addAttendance({ 
-                    studentId: sId, studentName: realName, subject: subject, 
-                    date: date, time: new Date().toLocaleTimeString('ar-EG'), timestamp: Date.now() 
-                });
-                notify(`تم الحضور: ${realName}`);
-                if (navigator.vibrate) navigator.vibrate(80);
-                return true;
+                else drawLogs();
             };
 
             const drawScanner = () => {
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4">
-                        <select id="sel-sub" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-blue-700 outline-none">
-                            ${SUBJECTS.map(s => `<option>${s}</option>`).join('')}
-                        </select>
-                        <div id="reader-container" class="w-full aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden border-4 border-white relative">
-                             <div id="reader"></div>
-                             <div class="absolute inset-0 border-[3rem] border-slate-900/40 pointer-events-none flex items-center justify-center">
-                                <div class="w-64 h-64 border-2 border-white/50 rounded-3xl"></div>
-                             </div>
-                        </div>
-                        <button id="start-scan" class="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 text-lg flex items-center justify-center gap-2">
-                             <i data-lucide="camera"></i> تشغيل الماسح الذكي
-                        </button>
-                        <button id="stop-scan" class="w-full py-5 bg-slate-100 text-slate-500 font-black rounded-2xl hidden flex items-center justify-center gap-2">إيقاف</button>
+                        <select id="sel-sub" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-blue-700">${SUBJECTS.map(s => `<option>${s}</option>`).join('')}</select>
+                        <div id="reader" class="rounded-3xl overflow-hidden border-4 border-white"></div>
+                        <button id="start-scan" class="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl">بدء الكاميرا</button>
                     </div>
                 `;
-                lucide.createIcons();
-                const btnStart = document.getElementById('start-scan');
-                const btnStop = document.getElementById('stop-scan');
-
-                btnStart.onclick = async () => {
-                    const currentSub = document.getElementById('sel-sub').value;
-                    btnStart.classList.add('hidden'); btnStop.classList.remove('hidden');
+                document.getElementById('start-scan').onclick = async () => {
                     html5QrCode = new Html5Qrcode("reader");
-                    await html5QrCode.start(
-                        { facingMode: "environment" }, { fps: 120, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 }, 
-                        async (decodedText) => {
-                            if (isProcessing) return; isProcessing = true;
-                            await registerStudentAttendance(decodedText, currentSub);
-                            setTimeout(() => { isProcessing = false; }, 400);
-                        }
-                    ).catch(() => { btnStart.classList.remove('hidden'); btnStop.classList.add('hidden'); notify("تعذر فتح الكاميرا", true); });
+                    await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => {
+                        const sub = document.getElementById('sel-sub').value;
+                        const date = new Date().toISOString().split('T')[0];
+                        const exists = await dbOps.checkAttendanceExist(text, sub, date);
+                        if (!exists) {
+                            const members = await dbOps.getAllMembers();
+                            const student = members.find(m => m.uid === text);
+                            if (student) {
+                                await dbOps.addAttendance({ studentId: text, studentName: student.name, subject: sub, date: date, time: new Date().toLocaleTimeString('ar-EG') });
+                                notify(`تم تسجيل: ${student.name}`);
+                            } else notify('طالب غير مسجل', true);
+                        } else notify('مسجل مسبقاً', true);
+                    });
                 };
-                btnStop.onclick = () => { stopScanner(); btnStart.classList.remove('hidden'); btnStop.classList.add('hidden'); };
             };
 
             const drawLogs = async () => {
+                const sub = SUBJECTS[0];
                 const date = new Date().toISOString().split('T')[0];
+                const list = await dbOps.getAttendance(sub, date);
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4">
-                        <div class="flex justify-between items-center mb-2 gap-2">
-                             <h4 class="font-black text-slate-800 text-sm">سجل الحضور</h4>
-                             <div class="flex gap-2">
-                                <button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black border border-green-100 flex items-center gap-1">
-                                    <i data-lucide="download" size="14"></i> تنزيل حضور
-                                </button>
-                                <button id="btn-manual-add" class="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-black border border-blue-100 flex items-center gap-1">
-                                    <i data-lucide="plus-circle" size="14"></i> إضافة حضور
-                                </button>
-                             </div>
+                        <h4 class="font-black text-center border-b pb-2">سجل اليوم</h4>
+                        <div id="log-list" class="space-y-2">
+                            ${list.map(a => `<div class="p-3 bg-slate-50 rounded-xl flex justify-between"><span>${a.studentName}</span><span class="text-slate-400 text-xs">${a.time}</span></div>`).join('') || 'لا يوجد حضور'}
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <select id="log-sub" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black outline-none">${SUBJECTS.map(s => `<option>${s}</option>`).join('')}</select>
-                            <input id="log-date" type="date" value="${date}" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black outline-none">
-                        </div>
-                        <div id="attendance-list" class="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar pb-10"></div>
                     </div>
                 `;
-                lucide.createIcons();
-
-                const update = async () => {
-                    const sub = document.getElementById('log-sub').value;
-                    const d = document.getElementById('log-date').value;
-                    const items = await dbOps.getAttendance(sub, d);
-                    items.sort((a,b) => b.timestamp - a.timestamp);
-
-                    document.getElementById('btn-download').onclick = () => {
-                        if (!items.length) return notify("لا توجد بيانات", true);
-                        const csv = "\uFEFFاسم الطالب,الوقت,التاريخ,المادة\n" + items.map(e => `${e.studentName},${e.time},${e.date},${e.subject}`).join("\n");
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                        const link = document.createElement("a");
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `حضور_${sub}_${d}.csv`;
-                        link.click();
-                    };
-
-                    document.getElementById('attendance-list').innerHTML = items.length ? items.map((a, i) => `
-                        <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border-r-4 border-indigo-500">
-                            <div><p class="font-bold text-sm text-slate-800">${a.studentName}</p><p class="text-[10px] text-slate-400 font-bold">${a.time}</p></div>
-                            <button class="text-red-300 p-2" onclick="delAtt(${a.id})"><i data-lucide="trash-2" size="18"></i></button>
-                        </div>
-                    `).join('') : '<div class="text-center py-20 text-slate-300 text-sm font-bold italic">القائمة فارغة</div>';
-                    lucide.createIcons();
-                };
-
-                window.delAtt = async (id) => { if(confirm('حذف؟')) { await dbOps.deleteAttendance(id); update(); } };
-
-                document.getElementById('btn-manual-add').onclick = () => {
-                    const sub = document.getElementById('log-sub').value;
-                    document.getElementById('manual-subject-display').innerText = sub;
-                    const select = document.getElementById('manual-student-select');
-                    select.innerHTML = '<option value="">-- اختر الطالب --</option>';
-                    Object.entries(membersCache).sort(([,a], [,b]) => a.localeCompare(b, 'ar')).forEach(([id, name]) => {
-                        select.innerHTML += `<option value="${id}">${name}</option>`;
-                    });
-                    document.getElementById('manual-modal').classList.add('active');
-                    document.getElementById('manual-save-btn').onclick = async () => {
-                        if (select.value) { await registerStudentAttendance(select.value, sub); update(); document.getElementById('manual-modal').classList.remove('active'); }
-                    };
-                };
-                document.getElementById('manual-close-btn').onclick = () => document.getElementById('manual-modal').classList.remove('active');
-                document.getElementById('log-sub').onchange = update;
-                document.getElementById('log-date').onchange = update;
-                update();
-            };
-
-            const drawMembers = async () => {
-                document.getElementById('admin-content').innerHTML = `<div class="space-y-4"><h4 class="font-black text-slate-800 flex items-center gap-2"><i data-lucide="users" class="text-green-600"></i> الطلاب (محلياً)</h4><div id="members-list" class="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar"></div></div>`;
-                const list = await dbOps.getAllMembers();
-                list.sort((a,b) => a.name.localeCompare(b.name, 'ar'));
-                document.getElementById('members-list').innerHTML = list.map(m => `
-                    <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border">
-                        <p class="font-bold text-sm text-slate-800">${m.name}</p>
-                        <button class="text-red-300 p-2" onclick="delMem('${m.uid}')"><i data-lucide="trash-2" size="18"></i></button>
-                    </div>
-                `).join('') || '<p class="text-center py-10 text-slate-300">لا يوجد طلاب</p>';
-                lucide.createIcons();
-                window.delMem = async (uid) => { if(confirm('حذف؟')) { await dbOps.deleteMember(uid); await refreshMembersCache(); drawMembers(); } };
             };
             draw();
         };
 
+        // --- Global Listeners ---
         document.getElementById('adm-confirm').onclick = () => {
             const u = document.getElementById('adm-user').value;
             const p = document.getElementById('adm-pass').value;
             if (u === "NTU" && p === "NTU_mlt12#45@56") {
-                document.getElementById('admin-modal').classList.remove('active');
-                localStorage.setItem('role', 'admin'); userRole = 'admin'; showAdmin();
-            } else notify('بيانات الإدارة خاطئة', true);
+                localStorage.setItem('role', 'admin');
+                window.location.reload();
+            } else notify('خطأ في البيانات', true);
         };
-        document.getElementById('adm-cancel').onclick = () => document.getElementById('admin-modal').classList.remove('active');
+
+        // FIX: Cancel button now properly hides the modal
+        document.getElementById('adm-cancel').onclick = () => {
+            document.getElementById('admin-modal').classList.remove('active');
+            // Clear fields
+            document.getElementById('adm-user').value = "";
+            document.getElementById('adm-pass').value = "";
+        };
 
         window.onload = async () => {
             await initDB();
-            await refreshMembersCache();
             if (userRole === 'admin') showAdmin();
             else if (userRole === 'student') showStudent();
             else showLogin();
-            
-            // Safe Service Worker Registration
-            if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-                const swCode = `
-                    self.addEventListener('install', e => self.skipWaiting());
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-            }
         };
     </script>
 </body>
