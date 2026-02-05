@@ -364,7 +364,7 @@
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4 animate-in">
                         <div class="flex flex-col gap-3">
-                             <div class="flex justify-between items-center"><h4 class="font-black text-sm text-slate-800">سجل الحضور</h4><div class="flex gap-2"><button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black hover:bg-green-100 transition-colors">تنزيل الحضور</button><button id="btn-manage-subjects" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black hover:bg-indigo-100 transition-colors">المواد</button></div></div>
+                             <div class="flex justify-between items-center"><h4 class="font-black text-sm text-slate-800">سجل الحضور</h4><div class="flex gap-2"><button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black hover:bg-green-100 transition-colors">تنزيل ملف CSV</button><button id="btn-manage-subjects" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black hover:bg-indigo-100 transition-colors">المواد</button></div></div>
                              <button id="btn-add-manual" class="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border border-blue-100 hover:bg-blue-100 transition-colors"><i data-lucide="plus-circle" size="16"></i> إضافة حضور يدوي</button>
                         </div>
                         <div class="grid grid-cols-2 gap-2"><select id="log-sub" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black outline-none shadow-sm"></select><input id="log-date" type="date" value="${date}" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black text-center shadow-sm"></div>
@@ -389,60 +389,26 @@
                 });
                 logSub.onchange = update; document.getElementById('log-date').onchange = update;
                 
-                // Excel Export
+                // CSV Export Logic with BOM for Arabic support
                 document.getElementById('btn-download').onclick = () => {
                     if (!currentLogData || currentLogData.length === 0) return notify('لا توجد بيانات للتنزيل', true);
                     const sub = logSub.value;
                     const dateVal = document.getElementById('log-date').value;
-                    const dayName = new Date(dateVal).toLocaleDateString('ar-EG', { weekday: 'long' });
+                    
+                    let csvContent = "\uFEFF"; // BOM for Excel Arabic support
+                    csvContent += "ت,الاسم الرباعي,المادة,التاريخ,وقت الحضور\n";
 
-                    const tableRows = currentLogData.map((item, index) => `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${dayName}</td>
-                            <td>${dateVal}</td>
-                            <td>${sub}</td>
-                            <td>${item.studentName}</td>
-                            <td>${item.time}</td>
-                        </tr>
-                    `).join('');
+                    currentLogData.forEach((item, index) => {
+                        const name = item.studentName.replace(/,/g, " "); // Handle commas in names
+                        const row = `${index + 1},${name},${sub},${dateVal},${item.time}`;
+                        csvContent += row + "\n";
+                    });
 
-                    const htmlContent = `
-                        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                        <head>
-                            <meta charset="utf-8">
-                            <style>
-                                body { font-family: 'Arial', sans-serif; }
-                                table { border-collapse: collapse; width: 100%; direction: rtl; }
-                                th, td { border: 1px solid #000; padding: 8px; text-align: center; }
-                                th { background-color: #f0f0f0; font-weight: bold; }
-                                .header { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 20px; }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="header" style="text-align:center; font-size:16px;">قائمة الحضور - جامعة التقنية الشمالية</div>
-                            <div style="text-align:center; margin-bottom:10px;">المادة: ${sub} | المرحلة: ${adminStage} | الدراسة: ${adminType}</div>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>ت</th>
-                                        <th>اليوم</th>
-                                        <th>التاريخ</th>
-                                        <th>المادة</th>
-                                        <th>الاسم الرباعي</th>
-                                        <th>وقت الحضور</th>
-                                    </tr>
-                                </thead>
-                                <tbody>${tableRows}</tbody>
-                            </table>
-                        </body>
-                        </html>
-                    `;
-                    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/vnd.ms-excel' });
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `حضور_${sub}_${dateVal}.xls`;
+                    link.download = `حضور_${sub}_${dateVal}.csv`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
