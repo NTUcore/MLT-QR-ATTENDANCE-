@@ -278,6 +278,8 @@
 
         const showAdmin = () => {
             let currentTab = 'scan';
+            let currentLogData = []; 
+
             const prefetchStudents = async () => {
                 localStudentsCache = {}; 
                 const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), where('stage', '==', adminStage), where('type', '==', adminType));
@@ -362,7 +364,7 @@
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4 animate-in">
                         <div class="flex flex-col gap-3">
-                             <div class="flex justify-between items-center"><h4 class="font-black text-sm text-slate-800">سجل الحضور</h4><div class="flex gap-2"><button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black hover:bg-green-100 transition-colors">تنزيل</button><button id="btn-manage-subjects" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black hover:bg-indigo-100 transition-colors">المواد</button></div></div>
+                             <div class="flex justify-between items-center"><h4 class="font-black text-sm text-slate-800">سجل الحضور</h4><div class="flex gap-2"><button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black hover:bg-green-100 transition-colors">تنزيل ملف CSV</button><button id="btn-manage-subjects" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black hover:bg-indigo-100 transition-colors">المواد</button></div></div>
                              <button id="btn-add-manual" class="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border border-blue-100 hover:bg-blue-100 transition-colors"><i data-lucide="plus-circle" size="16"></i> إضافة حضور يدوي</button>
                         </div>
                         <div class="grid grid-cols-2 gap-2"><select id="log-sub" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black outline-none shadow-sm"></select><input id="log-date" type="date" value="${date}" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black text-center shadow-sm"></div>
@@ -376,8 +378,8 @@
                     if (!sub || sub.includes('توجد')) return;
                     if (unsubLogs) unsubLogs();
                     unsubLogs = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), where('stage', '==', adminStage), where('type', '==', adminType), where('subject', '==', sub), where('date', '==', d)), (snap) => {
-                        const items = snap.docs.map(doc => ({id: doc.id, ...doc.data()})).sort((a,b) => b.timestamp - a.timestamp);
-                        document.getElementById('attendance-list').innerHTML = items.map(a => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border-r-4 border-indigo-500 shadow-sm animate-in"><div><p class="font-bold text-sm text-slate-800">${a.studentName}</p><p class="text-[10px] text-slate-400 font-bold">${a.time}</p></div><button onclick="window.deleteEntry('att', '${a.id}')" class="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all"><i data-lucide="trash-2" size="20"></i></button></div>`).join('') || '<div class="text-center py-10 text-slate-300">السجل فارغ</div>';
+                        currentLogData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})).sort((a,b) => b.timestamp - a.timestamp);
+                        document.getElementById('attendance-list').innerHTML = currentLogData.map(a => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border-r-4 border-indigo-500 shadow-sm animate-in"><div><p class="font-bold text-sm text-slate-800">${a.studentName}</p><p class="text-[10px] text-slate-400 font-bold">${a.time}</p></div><button onclick="window.deleteEntry('att', '${a.id}')" class="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all"><i data-lucide="trash-2" size="20"></i></button></div>`).join('') || '<div class="text-center py-10 text-slate-300">السجل فارغ</div>';
                         lucide.createIcons();
                     });
                 };
@@ -386,6 +388,32 @@
                     snap.forEach(d => logSub.innerHTML += `<option>${d.data().name}</option>`); update();
                 });
                 logSub.onchange = update; document.getElementById('log-date').onchange = update;
+                
+                // CSV Export Logic with BOM for Arabic support
+                document.getElementById('btn-download').onclick = () => {
+                    if (!currentLogData || currentLogData.length === 0) return notify('لا توجد بيانات للتنزيل', true);
+                    const sub = logSub.value;
+                    const dateVal = document.getElementById('log-date').value;
+                    
+                    let csvContent = "\uFEFF"; // BOM for Excel Arabic support
+                    csvContent += "ت,الاسم الرباعي,المادة,التاريخ,وقت الحضور\n";
+
+                    currentLogData.forEach((item, index) => {
+                        const name = item.studentName.replace(/,/g, " "); // Handle commas in names
+                        const row = `${index + 1},${name},${sub},${dateVal},${item.time}`;
+                        csvContent += row + "\n";
+                    });
+
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `حضور_${sub}_${dateVal}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
                 document.getElementById('btn-add-manual').onclick = async () => {
                     if (!logSub.value || logSub.value.includes('تحميل') || logSub.value.includes('توجد')) return notify('اختر مادة أولاً', true);
                     const students = await prefetchStudents();
