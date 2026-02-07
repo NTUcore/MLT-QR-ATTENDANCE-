@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نظام حضور جامعة التقنية الشمالية</title>
+    <title>نظام حضور جامعة التقنية الشمالية - المطور</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -18,9 +18,10 @@
         #reader video { border-radius: 1.5rem; object-fit: cover !important; }
         .animate-in { animation: fadeIn 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards; will-change: transform, opacity; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-        #admin-modal, #manual-modal, #subject-modal, #pin-modal { display: none; }
-        #admin-modal.active, #manual-modal.active, #subject-modal.active, #pin-modal.active { display: flex; }
+        #admin-modal, #manual-modal, #subject-modal, #pin-modal, #weeks-modal, #smart-report-modal { display: none; }
+        #admin-modal.active, #manual-modal.active, #subject-modal.active, #pin-modal.active, #weeks-modal.active, #smart-report-modal.active { display: flex; }
         button:active { transform: scale(0.96); transition: transform 0.05s ease-in-out; }
+        .week-card-expanded { grid-column: span 4; background-color: #f8fafc; border: 2px solid #2563eb; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-10">
@@ -52,31 +53,67 @@
         </div>
     </div>
 
-    <!-- PIN Modal for Subjects -->
-    <div id="pin-modal" class="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
-        <div class="bg-white rounded-[2rem] p-8 w-full max-sm shadow-2xl animate-in">
-            <h3 class="text-xl font-black mb-6 text-center text-slate-800">رمز حماية المواد</h3>
+    <!-- Smart Report Modal -->
+    <div id="smart-report-modal" class="fixed inset-0 z-[140] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-6 w-full max-sm shadow-2xl animate-in border border-slate-100 max-h-[85vh] flex flex-col">
+            <h3 class="text-lg font-black mb-2 text-center text-slate-800 border-b pb-2">الشاشة الذكية - تقرير الغياب</h3>
+            
+            <div class="space-y-3 mb-4">
+                 <div class="bg-blue-50 p-2 rounded-xl text-center border border-blue-100">
+                    <span id="sr-info" class="text-xs font-black text-blue-800"></span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="sr-week-select" class="p-3 bg-slate-50 rounded-xl font-bold text-xs text-center border-none outline-none"></select>
+                    <select id="sr-day-select" class="p-3 bg-slate-50 rounded-xl font-bold text-xs text-center border-none outline-none">
+                        <option value="sun">الأحد</option><option value="mon">الاثنين</option>
+                        <option value="tue">الثلاثاء</option><option value="wed">الأربعاء</option>
+                        <option value="thu">الخميس</option>
+                    </select>
+                </div>
+                <button id="btn-generate-report" class="w-full py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">عرض الغياب</button>
+            </div>
+
+            <div id="report-results" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <p class="text-center text-slate-400 text-xs py-10">اختر الأسبوع واليوم ثم اضغط عرض</p>
+            </div>
+
+            <button id="sr-close-btn" class="w-full py-3 mt-4 text-slate-500 font-bold text-sm bg-slate-100 rounded-xl">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- Weeks Manager Modal -->
+    <div id="weeks-modal" class="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-4 w-full max-sm shadow-2xl animate-in border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-black mb-2 text-center text-slate-800 border-b pb-2">تفعيل الأسابيع (16 أسبوع)</h3>
+            <p class="text-[10px] text-center text-slate-400 font-bold mb-4">حدد التاريخ لتفعيل اليوم + أضف المواد (حتى 4 مواد)</p>
+            
+            <div class="bg-blue-50 p-3 rounded-xl mb-4 text-center border border-blue-100">
+                <span id="wm-info" class="text-xs font-black text-blue-800"></span>
+            </div>
+
             <div class="space-y-4">
-                <input id="subject-pin-input" type="password" placeholder="أدخل الرمز" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-center shadow-inner">
-                <button id="btn-pin-confirm" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg transition-transform duration-75">دخول</button>
-                <button id="btn-pin-cancel" class="w-full py-2 text-slate-400 font-bold text-sm">إلغاء</button>
+                <select id="wm-week-select" class="w-full p-3 bg-slate-50 rounded-xl border-none outline-none font-bold text-slate-700 shadow-sm text-center">
+                    <!-- Options 1-16 generated by JS -->
+                </select>
+
+                <div id="days-container" class="space-y-6">
+                    <!-- Days Generated by JS -->
+                </div>
+
+                <button id="btn-save-week" class="w-full py-3 bg-emerald-600 text-white font-black rounded-2xl shadow-lg transition-transform duration-75">حفظ وتفعيل الأسبوع</button>
+                <button id="weeks-close-btn" class="w-full py-2 text-slate-400 font-bold text-sm">إغلاق</button>
             </div>
         </div>
     </div>
 
-    <!-- Subject Modal -->
-    <div id="subject-modal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
-        <div class="bg-white rounded-[2rem] p-6 w-full max-sm shadow-2xl animate-in border border-slate-100">
-            <h3 class="text-lg font-black mb-4 text-center text-slate-800 border-b pb-2">إدارة المواد</h3>
+    <!-- PIN Modal for Subjects -->
+    <div id="pin-modal" class="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-8 w-full max-sm shadow-2xl animate-in">
+            <h3 class="text-xl font-black mb-6 text-center text-slate-800">رمز حماية النظام</h3>
             <div class="space-y-4">
-                <p class="text-xs text-slate-500 font-bold text-center">الإضافة للمرحلة <span id="sub-modal-stage" class="text-blue-600"></span> - <span id="sub-modal-type" class="text-blue-600"></span></p>
-                <input id="new-subject-name" type="text" placeholder="اسم المادة الجديدة" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold shadow-inner">
-                <button id="btn-save-subject" class="w-full py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-lg transition-transform duration-75">إضافة المادة</button>
-                <div class="border-t pt-2 mt-2">
-                     <p class="text-[10px] font-bold text-slate-400 mb-2 text-center">المواد الحالية (اضغط للحذف)</p>
-                     <div id="current-subjects-list" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto justify-center"></div>
-                </div>
-                <button id="subject-close-btn" class="w-full py-2 text-slate-400 font-bold text-sm bg-slate-50 rounded-xl">إغلاق</button>
+                <input id="subject-pin-input" type="password" placeholder="أدخل الرمز" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-center shadow-inner">
+                <button id="btn-pin-confirm" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg transition-transform duration-75">دخول</button>
+                <button id="btn-pin-cancel" class="w-full py-2 text-slate-400 font-bold text-sm">إلغاء</button>
             </div>
         </div>
     </div>
@@ -98,7 +135,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, onSnapshot, query, where, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, onSnapshot, query, where, deleteDoc, serverTimestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -113,14 +150,26 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const appId = "ntumlt-attendance-v2";
+        
+        const appId = "ntumlt-att-v4-strict-dates"; 
+
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code == 'failed-precondition') { console.log('Multiple tabs open'); }
+            else if (err.code == 'unimplemented') { console.log('Browser not supported'); }
+        });
 
         let userRole = localStorage.getItem('role') || null;
         let userData = JSON.parse(localStorage.getItem('userData')) || null;
+        
         let adminStage = localStorage.getItem('adminStage') || 'الأولى';
         let adminType = localStorage.getItem('adminType') || 'صباحي';
+        let adminGroup = localStorage.getItem('adminGroup') || 'A';
+
         let html5QrCode = null;
         let localStudentsCache = {}; 
+        let globalWeeksData = {}; 
+
+        const dayNamesMap = { 'sun': 'الأحد', 'mon': 'الاثنين', 'tue': 'الثلاثاء', 'wed': 'الأربعاء', 'thu': 'الخميس' };
 
         const render = (html) => {
             const root = document.getElementById('app-root');
@@ -138,13 +187,7 @@
             toast.innerHTML = isError ? `<i data-lucide="alert-circle" size="18"></i> ${msg}` : `<i data-lucide="check-circle" size="18"></i> ${msg}`;
             document.body.appendChild(toast);
             lucide.createIcons();
-            setTimeout(() => { 
-                if(toast) { 
-                    toast.style.opacity = '0'; 
-                    toast.style.transition = 'opacity 0.1s'; 
-                    setTimeout(() => toast.remove(), 100); 
-                } 
-            }, 1000); 
+            setTimeout(() => { if(toast) toast.remove(); }, 1500); 
         };
 
         window.deleteEntry = async (type, id) => {
@@ -181,7 +224,7 @@
             render(`
                 <div class="mt-8 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 animate-in">
                     <h3 class="text-2xl font-black text-center mb-2 text-slate-800">بوابة الدخول</h3>
-                    <p class="text-xs text-slate-400 font-bold text-center mb-8">يرجى ادخال معلوماتك لتتمكن من تسجيل حضور</p>
+                    <p class="text-xs text-slate-400 font-bold text-center mb-8">ادخل معلوماتك الشخصية للتمكن من تسجيل حضور</p>
                     <div class="space-y-4">
                         <input id="stu-name" type="text" placeholder="اسم طالب/طالبة رباعي" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-center shadow-sm">
                         <div class="grid grid-cols-2 gap-2">
@@ -191,11 +234,24 @@
                                 <option value="الثالثة">الثالثة</option><option value="الرابعة">الرابعة</option>
                             </select>
                              <select id="stu-type" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-600 shadow-sm">
-                                <option value="" disabled selected>نوع الدراسة</option>
+                                <option value="" disabled selected>الدراسة</option>
                                 <option value="صباحي">صباحي</option>
                                 <option value="مسائي">مسائي</option>
-                                <option value="استضافة صباحي">استضافة صباحي</option>
                             </select>
+                        </div>
+                        <div class="bg-indigo-50 p-3 rounded-2xl border border-indigo-100">
+                             <p class="text-[10px] text-indigo-500 font-bold mb-2 text-center">اختر الكروب (هام جداً)</p>
+                             <select id="stu-group" class="w-full p-3 bg-white rounded-xl border-none outline-none font-bold text-indigo-700 shadow-sm text-center">
+                                <option value="" disabled selected>-- اختر الكروب --</option>
+                                <option value="A">Group A</option>
+                                <option value="B">Group B</option>
+                            </select>
+                        </div>
+                        <div id="hosting-option" class="hidden animate-in bg-yellow-50 p-3 rounded-2xl border border-yellow-100">
+                            <label class="flex items-center gap-3 cursor-pointer justify-center">
+                                <input type="checkbox" id="is-hosting" class="w-5 h-5 accent-yellow-600 rounded-lg">
+                                <span class="text-sm font-bold text-yellow-700">أنا طالب استضافة صباحي</span>
+                            </label>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <input id="stu-pin" type="password" placeholder="رمز الدخول" class="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-center shadow-sm">
@@ -210,29 +266,49 @@
                     </div>
                 </div>
             `);
+
+            const typeSelect = document.getElementById('stu-type');
+            const hostingDiv = document.getElementById('hosting-option');
+            typeSelect.addEventListener('change', (e) => {
+                if(e.target.value === 'صباحي') {
+                    hostingDiv.classList.remove('hidden'); hostingDiv.classList.add('flex');
+                } else {
+                    hostingDiv.classList.add('hidden'); hostingDiv.classList.remove('flex');
+                    document.getElementById('is-hosting').checked = false;
+                }
+            });
+
             document.getElementById('btn-stu-login').onclick = async () => {
-                const name = document.getElementById('stu-name').value.trim();
+                let name = document.getElementById('stu-name').value.trim();
                 const stage = document.getElementById('stu-stage').value;
                 const type = document.getElementById('stu-type').value;
+                const group = document.getElementById('stu-group').value;
                 const pin = document.getElementById('stu-pin').value;
+                const isHosting = document.getElementById('is-hosting').checked;
+
                 const nameParts = name.split(/\s+/).filter(p => p.length > 0);
                 if (nameParts.length < 4) return notify('يجب كتابة الاسم رباعي كاملاً', true);
-                if (!name || !stage || !type || !pin || pin !== document.getElementById('stu-confirm').value) return notify('تأكد من البيانات والرموز', true);
+                if (!name || !stage || !type || !group || !pin || pin !== document.getElementById('stu-confirm').value) return notify('تأكد من البيانات واختيار الكروب', true);
+                
+                if(isHosting && type === 'صباحي' && !name.includes('(استضافة)')) { name = name + " (استضافة)"; }
+
                 const btn = document.getElementById('btn-stu-login'); btn.disabled = true;
                 try {
                     const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), where("name", "==", name));
                     const snap = await getDocs(q);
+                    
                     if (!snap.empty) {
                         const existing = snap.docs[0].data();
-                        if (existing.pin === pin) { userData = existing; userRole = 'student'; saveS(); showStudent(); }
-                        else notify('الرمز خطأ', true);
+                        if (existing.pin === pin) { 
+                            userData = existing; userRole = 'student'; saveS(); showStudent(); 
+                        } else notify('الرمز خطأ', true);
                     } else {
                         const newId = auth.currentUser?.uid || "u_" + Date.now();
-                        const newStu = { uid: newId, name, role: 'student', stage, type, department: 'مختبرات طبية', pin };
+                        const newStu = { uid: newId, name, role: 'student', stage, type, group, department: 'مختبرات طبية', pin };
                         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', newId), newStu);
                         userData = newStu; userRole = 'student'; saveS(); showStudent();
                     }
-                } catch (e) { notify('خطأ اتصال', true); }
+                } catch (e) { console.error(e); notify('خطأ اتصال', true); }
                 btn.disabled = false;
             };
             document.getElementById('open-admin-modal').onclick = () => document.getElementById('admin-modal').classList.add('active');
@@ -247,25 +323,38 @@
             } else notify('البيانات خاطئة', true);
         };
 
-        const showStudent = () => {
+        const showStudent = async () => {
             if (!userData) return showLogin();
             render(`
                 <div class="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in">
                     <div class="p-6 text-center border-b bg-slate-50/50">
                         <h2 class="text-xl font-black text-blue-800 mb-2">${userData.name}</h2>
                          <div class="flex justify-between items-center px-2 mt-4 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-                             <div class="text-center w-1/3 border-l"><span class="text-[10px] text-slate-400 block font-bold">المرحلة</span><span class="text-sm font-black text-slate-700">${userData.stage}</span></div>
-                             <div class="text-center w-1/3 border-l"><span class="text-[10px] text-slate-400 block font-bold">الدراسة</span><span class="text-sm font-black text-slate-700">${userData.type}</span></div>
-                             <div class="text-center w-1/3"><span class="text-[10px] text-slate-400 block font-bold">القسم</span><span class="text-sm font-black text-slate-700">مختبرات طبية</span></div>
+                             <div class="text-center w-1/4 border-l"><span class="text-[10px] text-slate-400 block font-bold">المرحلة</span><span class="text-xs font-black text-slate-700">${userData.stage}</span></div>
+                             <div class="text-center w-1/4 border-l"><span class="text-[10px] text-slate-400 block font-bold">الدراسة</span><span class="text-xs font-black text-slate-700">${userData.type}</span></div>
+                             <div class="text-center w-1/4 border-l"><span class="text-[10px] text-slate-400 block font-bold">الكروب</span><span class="text-xs font-black text-red-600">${userData.group || 'غير محدد'}</span></div>
+                             <div class="text-center w-1/4"><span class="text-[10px] text-slate-400 block font-bold">القسم</span><span class="text-xs font-black text-slate-700">مختبرات</span></div>
                         </div>
                     </div>
-                    <div class="p-8 text-center flex flex-col items-center">
+
+                    <div id="points-section" class="p-4 bg-indigo-50 border-b border-indigo-100 min-h-[300px]">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-black text-indigo-800 text-sm">سجل الحضور (16 أسبوع)</h4>
+                            <span id="total-status" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold">جاري التحميل...</span>
+                        </div>
+                        <div id="weeks-grid" class="grid grid-cols-4 gap-2">
+                            <div class="col-span-4 text-center text-xs text-slate-400">جاري جلب بيانات الأسابيع والمواد...</div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 text-center flex flex-col items-center">
                         <div id="qrcode" class="qr-container mb-8"></div>
                         <p class="text-[10px] text-slate-400 font-bold mb-6 flex items-center gap-1"><i data-lucide="scan-line" size="12"></i> الباركود جاهز للمسح</p>
-                        <button id="back-home-stu" class="w-full py-4 text-blue-600 border border-blue-100 rounded-2xl font-black flex items-center justify-center gap-2 bg-blue-50/50 hover:bg-blue-100 transition-colors"><i data-lucide="home"></i> عودة الى شاشة رئيسية</button>
+                        <button id="back-home-stu" class="w-full py-4 text-blue-600 border border-blue-100 rounded-2xl font-black flex items-center justify-center gap-2 bg-blue-50/50 hover:bg-blue-100 transition-colors"><i data-lucide="home"></i> تسجيل خروج</button>
                     </div>
                 </div>
             `);
+
             setTimeout(() => {
                 const qrCont = document.getElementById("qrcode");
                 if (qrCont && userData?.uid) {
@@ -273,49 +362,160 @@
                     new QRCode(qrCont, { text: userData.uid, width: 220, height: 220, colorDark: "#1e40af", correctLevel: QRCode.CorrectLevel.L });
                 }
             }, 150);
+
             document.getElementById('back-home-stu').onclick = goBackToHome;
+
+            const weeksRef = collection(db, 'artifacts', appId, 'public', 'data', 'weeks');
+            const qWeeks = query(weeksRef, where('stage', '==', userData.stage), where('type', '==', userData.type), where('group', '==', userData.group));
+            
+            const attRef = collection(db, 'artifacts', appId, 'public', 'data', 'attendance');
+            const qAtt = query(attRef, where('studentId', '==', userData.uid));
+
+            const renderStudentGrid = (weeksDocs, attDocs) => {
+                const weeksData = {};
+                weeksDocs.forEach(d => weeksData[d.data().weekNum] = d.data());
+
+                const attendanceMap = {}; 
+                attDocs.forEach(d => {
+                    const rec = d.data();
+                    const key = `${rec.date}_${rec.subject}`;
+                    attendanceMap[key] = true;
+                });
+
+                let totalPoints = 0;
+                let gridHtml = '';
+
+                for(let i = 1; i <= 16; i++) {
+                    const weekConfig = weeksData[i];
+                    let weekAbsenceDays = 0;
+                    let weekHasData = false;
+                    let detailsHtml = '';
+
+                    if (weekConfig && weekConfig.days) {
+                        weekHasData = true;
+                        ['sun', 'mon', 'tue', 'wed', 'thu'].forEach(dayKey => {
+                            const dayData = weekConfig.days[dayKey];
+                            if (dayData && dayData.date) { 
+                                const subjects = dayData.subjects || [];
+                                const dateStr = dayData.date;
+                                let attendedCount = 0;
+                                let subjectsHtml = '';
+                                
+                                subjects.forEach(sub => {
+                                    const attended = attendanceMap[`${dateStr}_${sub}`];
+                                    if (attended) attendedCount++;
+                                    subjectsHtml += `<span class="${attended ? 'text-green-600' : 'text-red-500'} text-[9px] block">• ${sub} ${attended ? '✓' : '✗'}</span>`;
+                                });
+
+                                if (subjects.length > 0 && attendedCount < subjects.length) {
+                                    weekAbsenceDays++;
+                                    detailsHtml += `<div class="bg-red-50 p-1 rounded mb-1 border-r-2 border-red-400"><p class="text-[10px] font-bold text-red-700">${dayNamesMap[dayKey]} (${dateStr})</p>${subjectsHtml}</div>`;
+                                } else if (subjects.length > 0) {
+                                    detailsHtml += `<div class="bg-green-50 p-1 rounded mb-1 border-r-2 border-green-400"><p class="text-[10px] font-bold text-green-700">${dayNamesMap[dayKey]} (${dateStr})</p>${subjectsHtml}</div>`;
+                                }
+                            }
+                        });
+                    }
+
+                    let statusClass = "bg-slate-100 text-slate-400 border-slate-200";
+                    let statusIcon = "circle-dashed";
+
+                    if (weekHasData) {
+                        if (weekAbsenceDays > 2) {
+                            statusClass = "bg-red-600 text-white border-red-700 shadow-md scale-105";
+                            statusIcon = "x-circle";
+                        } else if (weekAbsenceDays > 0) {
+                            statusClass = "bg-yellow-400 text-yellow-900 border-yellow-500";
+                            statusIcon = "alert-triangle";
+                        } else {
+                            statusClass = "bg-green-600 text-white border-green-700 shadow-md";
+                            statusIcon = "check-circle";
+                            totalPoints++;
+                        }
+                    }
+
+                    gridHtml += `
+                        <div onclick="document.getElementById('w-det-${i}').classList.toggle('hidden');" class="cursor-pointer relative flex flex-col items-center justify-center p-2 rounded-xl border ${statusClass} transition-all active:scale-95 h-20">
+                            <span class="text-[10px] font-black opacity-80">أسبوع ${i}</span>
+                            <i data-lucide="${statusIcon}" size="20" class="mt-1"></i>
+                        </div>
+                        <div id="w-det-${i}" class="hidden col-span-4 bg-white p-3 rounded-xl border border-slate-200 shadow-inner mb-2 animate-in">
+                            <h5 class="text-xs font-black text-slate-800 mb-2 border-b pb-1">تفاصيل الأسبوع ${i}</h5>
+                            ${weekHasData ? detailsHtml : '<p class="text-[10px] text-slate-400">لم يتم تفعيل هذا الأسبوع بعد</p>'}
+                        </div>
+                    `;
+                }
+                document.getElementById('weeks-grid').innerHTML = gridHtml;
+                document.getElementById('total-status').innerText = `الأسابيع الكاملة: ${totalPoints}`;
+                lucide.createIcons();
+            };
+
+            onSnapshot(qWeeks, (wSnap) => {
+                onSnapshot(qAtt, (aSnap) => {
+                    renderStudentGrid(wSnap.docs, aSnap.docs);
+                });
+            });
         };
 
         const showAdmin = () => {
             let currentTab = 'scan';
-            let currentLogData = []; 
-
+            let currentLogData = [];
+            
             const prefetchStudents = async () => {
                 localStudentsCache = {}; 
-                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), where('stage', '==', adminStage), where('type', '==', adminType));
-                const snap = await getDocs(q);
+                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), 
+                    where('stage', '==', adminStage), 
+                    where('type', '==', adminType),
+                    where('group', '==', adminGroup)); 
+                const snap = await getDocs(q); 
                 snap.forEach(doc => { localStudentsCache[doc.id] = doc.data().name; });
                 return localStudentsCache;
             };
 
             const draw = () => {
                 render(`
-                    <div class="bg-blue-800 p-3 rounded-2xl text-white shadow-lg mb-4 flex justify-between gap-2 items-center animate-in">
-                        <select id="adm-filter-stage" class="bg-blue-700 text-white font-bold rounded-xl p-2 text-xs border-none outline-none cursor-pointer">
-                            <option value="الأولى" ${adminStage === 'الأولى' ? 'selected' : ''}>الأولى</option>
-                            <option value="الثانية" ${adminStage === 'الثانية' ? 'selected' : ''}>الثانية</option>
-                            <option value="الثالثة" ${adminStage === 'الثالثة' ? 'selected' : ''}>الثالثة</option>
-                            <option value="الرابعة" ${adminStage === 'الرابعة' ? 'selected' : ''}>الرابعة</option>
-                        </select>
-                        <select id="adm-filter-type" class="bg-blue-700 text-white font-bold rounded-xl p-2 text-xs border-none outline-none cursor-pointer">
-                            <option value="صباحي" ${adminType === 'صباحي' ? 'selected' : ''}>صباحي</option>
-                            <option value="مسائي" ${adminType === 'مسائي' ? 'selected' : ''}>مسائي</option>
-                            <option value="استضافة صباحي" ${adminType === 'استضافة صباحي' ? 'selected' : ''}>استضافة صباحي</option>
-                        </select>
+                    <div class="bg-blue-800 p-4 rounded-3xl text-white shadow-xl mb-4 flex flex-col gap-3 animate-in">
+                        <div class="flex justify-between items-center gap-2">
+                            <select id="adm-filter-stage" class="flex-1 bg-blue-700 text-white font-bold rounded-xl p-2 text-xs border-none outline-none">
+                                <option value="الأولى" ${adminStage === 'الأولى' ? 'selected' : ''}>الأولى</option>
+                                <option value="الثانية" ${adminStage === 'الثانية' ? 'selected' : ''}>الثانية</option>
+                                <option value="الثالثة" ${adminStage === 'الثالثة' ? 'selected' : ''}>الثالثة</option>
+                                <option value="الرابعة" ${adminStage === 'الرابعة' ? 'selected' : ''}>الرابعة</option>
+                            </select>
+                            <select id="adm-filter-type" class="flex-1 bg-blue-700 text-white font-bold rounded-xl p-2 text-xs border-none outline-none">
+                                <option value="صباحي" ${adminType === 'صباحي' ? 'selected' : ''}>صباحي</option>
+                                <option value="مسائي" ${adminType === 'مسائي' ? 'selected' : ''}>مسائي</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <select id="adm-filter-group" class="flex-1 bg-white text-blue-800 font-black rounded-xl p-2 text-xs border-none outline-none text-center">
+                                <option value="A" ${adminGroup === 'A' ? 'selected' : ''}>Group A</option>
+                                <option value="B" ${adminGroup === 'B' ? 'selected' : ''}>Group B</option>
+                            </select>
+                        </div>
                     </div>
                     <nav class="flex bg-white p-2 rounded-3xl shadow-xl gap-2 mb-4">
-                        <button id="tab-scan" class="flex-1 py-4 rounded-2xl font-black transition-all duration-100 ${currentTab === 'scan' ? 'bg-blue-600 text-white shadow-lg scale-[1.02]' : 'text-slate-400'}">المسح</button>
-                        <button id="tab-logs" class="flex-1 py-4 rounded-2xl font-black transition-all duration-100 ${currentTab === 'logs' ? 'bg-indigo-600 text-white shadow-lg scale-[1.02]' : 'text-slate-400'}">الحضور</button>
-                        <button id="tab-members" class="flex-1 py-4 rounded-2xl font-black transition-all duration-100 ${currentTab === 'members' ? 'bg-green-600 text-white shadow-lg scale-[1.02]' : 'text-slate-400'}">الطلاب</button>
+                        <button id="tab-scan" class="flex-1 py-4 rounded-2xl font-black transition-all ${currentTab === 'scan' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}">المسح</button>
+                        <button id="tab-logs" class="flex-1 py-4 rounded-2xl font-black transition-all ${currentTab === 'logs' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}">السجل</button>
+                        <button id="tab-members" class="flex-1 py-4 rounded-2xl font-black transition-all ${currentTab === 'members' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400'}">الطلاب</button>
                     </nav>
                     <div id="admin-content" class="bg-white p-6 rounded-[2.5rem] shadow-xl min-h-[400px]"></div>
-                    <button id="back-home-admin" class="w-full mt-8 py-4 bg-white text-blue-600 rounded-2xl font-black flex justify-center gap-2 items-center border border-blue-100 transition-colors hover:bg-blue-50">
-                        <i data-lucide="home"></i> عودة الى شاشة رئيسية
-                    </button>
+                    <button id="back-home-admin" class="w-full mt-8 py-4 bg-white text-blue-600 rounded-2xl font-black flex justify-center gap-2 border border-blue-100"><i data-lucide="home"></i> عودة</button>
                 `);
+                
                 prefetchStudents();
-                document.getElementById('adm-filter-stage').onchange = (e) => { adminStage = e.target.value; localStorage.setItem('adminStage', adminStage); stopScanner(); draw(); };
-                document.getElementById('adm-filter-type').onchange = (e) => { adminType = e.target.value; localStorage.setItem('adminType', adminType); stopScanner(); draw(); };
+                const updateFilters = () => {
+                    adminStage = document.getElementById('adm-filter-stage').value;
+                    adminType = document.getElementById('adm-filter-type').value;
+                    adminGroup = document.getElementById('adm-filter-group').value;
+                    localStorage.setItem('adminStage', adminStage);
+                    localStorage.setItem('adminType', adminType);
+                    localStorage.setItem('adminGroup', adminGroup);
+                    stopScanner(); draw();
+                };
+                document.getElementById('adm-filter-stage').onchange = updateFilters;
+                document.getElementById('adm-filter-type').onchange = updateFilters;
+                document.getElementById('adm-filter-group').onchange = updateFilters;
                 document.getElementById('tab-scan').onclick = () => { currentTab = 'scan'; stopScanner(); draw(); };
                 document.getElementById('tab-logs').onclick = () => { currentTab = 'logs'; stopScanner(); draw(); };
                 document.getElementById('tab-members').onclick = () => { currentTab = 'members'; stopScanner(); draw(); };
@@ -326,35 +526,34 @@
             const stopScanner = () => { if (html5QrCode) { try { html5QrCode.stop(); } catch(e) {} html5QrCode = null; } };
 
             const drawScanner = () => {
+                const todayDate = new Date().toISOString().split('T')[0];
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4 animate-in">
-                        <select id="sel-sub" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-blue-700 outline-none text-center shadow-sm"><option value="">جاري التحميل...</option></select>
+                        <select id="sel-sub" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-blue-700 text-center shadow-sm"><option value="">اختر المادة...</option></select>
                         <div id="reader-container" class="w-full aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl relative"><div id="reader"></div></div>
-                        <button id="start-scan" class="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95"><i data-lucide="zap"></i> تشغيل الكاميرا</button>
-                        <button id="stop-scan" class="w-full py-5 bg-slate-100 text-slate-500 font-black rounded-2xl hidden transition-transform active:scale-95">إيقاف</button>
+                        <button id="start-scan" class="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-2"><i data-lucide="zap"></i> تشغيل الكاميرا</button>
+                        <button id="stop-scan" class="w-full py-5 bg-slate-100 text-slate-500 font-black rounded-2xl hidden">إيقاف</button>
                     </div>
                 `;
                 const selSub = document.getElementById('sel-sub');
-                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType)), (snap) => {
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup)), (snap) => {
                     selSub.innerHTML = snap.empty ? '<option disabled selected>لا توجد مواد</option>' : '';
                     snap.forEach(d => selSub.innerHTML += `<option value="${d.data().name}">${d.data().name}</option>`);
                 });
                 document.getElementById('start-scan').onclick = async () => {
-                    if (!selSub.value || selSub.value.includes('تحميل')) return notify('اختر مادة أولاً', true);
+                    if (!selSub.value) return notify('اختر مادة أولاً', true);
                     document.getElementById('start-scan').classList.add('hidden'); document.getElementById('stop-scan').classList.remove('hidden');
                     const sessionScanned = new Set();
                     html5QrCode = new Html5Qrcode("reader");
-                    const config = { fps: 120, qrbox: { width: 290, height: 290 }, aspectRatio: 1.0, disableFlip: true, videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 }, focusMode: "continuous" } };
-                    html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                    html5QrCode.start({ facingMode: "environment" }, { fps: 60, qrbox: 250 }, (text) => {
                         if (sessionScanned.has(text)) return; 
-                        const studentName = localStudentsCache[text];
+                        let studentName = localStudentsCache[text];
                         if (studentName) {
-                            sessionScanned.add(text); setTimeout(() => sessionScanned.delete(text), 120000);
-                            notify(`تم: ${studentName}`); if (navigator.vibrate) navigator.vibrate(50); 
-                            const today = new Date().toISOString().split('T')[0];
-                            addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), { studentId: text, studentName: studentName, subject: selSub.value, stage: adminStage, type: adminType, date: today, time: new Date().toLocaleTimeString('ar-EG'), timestamp: serverTimestamp() }).catch(err => { notify(`فشل حفظ: ${studentName}`, true); sessionScanned.delete(text); });
-                        } 
-                    }).catch(() => notify("تأكد من إذن الكاميرا", true));
+                            sessionScanned.add(text); setTimeout(() => sessionScanned.delete(text), 60000); 
+                            notify(`تم: ${studentName}`);
+                            addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), { studentId: text, studentName, subject: selSub.value, stage: adminStage, type: adminType, group: adminGroup, date: todayDate, time: new Date().toLocaleTimeString('ar-EG'), timestamp: serverTimestamp() });
+                        } else notify('طالب غير موجود في هذا الكروب', true);
+                    });
                 };
                 document.getElementById('stop-scan').onclick = () => { stopScanner(); document.getElementById('start-scan').classList.remove('hidden'); document.getElementById('stop-scan').classList.add('hidden'); };
             };
@@ -363,11 +562,17 @@
                 const date = new Date().toISOString().split('T')[0];
                 document.getElementById('admin-content').innerHTML = `
                     <div class="space-y-4 animate-in">
-                        <div class="flex flex-col gap-3">
-                             <div class="flex justify-between items-center"><h4 class="font-black text-sm text-slate-800">سجل الحضور</h4><div class="flex gap-2"><button id="btn-download" class="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-black hover:bg-green-100 transition-colors">تنزيل ملف CSV</button><button id="btn-manage-subjects" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black hover:bg-indigo-100 transition-colors">المواد</button></div></div>
-                             <button id="btn-add-manual" class="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 border border-blue-100 hover:bg-blue-100 transition-colors"><i data-lucide="plus-circle" size="16"></i> إضافة حضور يدوي</button>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex gap-2">
+                                <button id="btn-smart-report" class="flex-1 py-3 bg-purple-50 text-purple-600 rounded-xl text-xs font-black border border-purple-200">الشاشة الذكية</button>
+                                <button id="btn-download" class="flex-1 py-3 bg-green-50 text-green-600 rounded-xl text-xs font-black border border-green-200">تنزيل CSV</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="btn-manage-weeks" class="flex-1 py-3 bg-orange-50 text-orange-600 rounded-xl text-xs font-black border border-orange-200">تفعيل الأسابيع</button>
+                                <button id="btn-manage-subjects" class="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-black border border-indigo-200">المواد السريعة</button>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2"><select id="log-sub" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black outline-none shadow-sm"></select><input id="log-date" type="date" value="${date}" class="p-3 bg-slate-50 rounded-xl border-none text-[10px] font-black text-center shadow-sm"></div>
+                        <div class="grid grid-cols-2 gap-2"><select id="log-sub" class="p-3 bg-slate-50 rounded-xl text-[10px] font-black outline-none"></select><input id="log-date" type="date" value="${date}" class="p-3 bg-slate-50 rounded-xl text-[10px] font-black text-center"></div>
                         <div id="attendance-list" class="space-y-2 max-h-[350px] overflow-y-auto no-scrollbar"></div>
                     </div>
                 `;
@@ -377,96 +582,93 @@
                     const sub = logSub.value; const d = document.getElementById('log-date').value;
                     if (!sub || sub.includes('توجد')) return;
                     if (unsubLogs) unsubLogs();
-                    unsubLogs = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), where('stage', '==', adminStage), where('type', '==', adminType), where('subject', '==', sub), where('date', '==', d)), (snap) => {
-                        currentLogData = snap.docs.map(doc => ({id: doc.id, ...doc.data()})).sort((a,b) => b.timestamp - a.timestamp);
-                        document.getElementById('attendance-list').innerHTML = currentLogData.map(a => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border-r-4 border-indigo-500 shadow-sm animate-in"><div><p class="font-bold text-sm text-slate-800">${a.studentName}</p><p class="text-[10px] text-slate-400 font-bold">${a.time}</p></div><button onclick="window.deleteEntry('att', '${a.id}')" class="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all"><i data-lucide="trash-2" size="20"></i></button></div>`).join('') || '<div class="text-center py-10 text-slate-300">السجل فارغ</div>';
+                    unsubLogs = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup), where('subject', '==', sub), where('date', '==', d)), (snap) => {
+                        currentLogData = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                        document.getElementById('attendance-list').innerHTML = currentLogData.map(a => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border shadow-sm"><div><p class="font-bold text-sm text-slate-800">${a.studentName}</p><p class="text-[10px] text-slate-400 font-bold">${a.time}</p></div><button onclick="window.deleteEntry('att', '${a.id}')" class="text-red-500 p-2"><i data-lucide="trash-2" size="20"></i></button></div>`).join('') || '<div class="text-center py-10 text-slate-300">لا يوجد بيانات</div>';
                         lucide.createIcons();
                     });
                 };
-                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType)), (snap) => {
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup)), (snap) => {
                     logSub.innerHTML = snap.empty ? '<option disabled selected>لا توجد مواد</option>' : '';
                     snap.forEach(d => logSub.innerHTML += `<option>${d.data().name}</option>`); update();
                 });
                 logSub.onchange = update; document.getElementById('log-date').onchange = update;
-                
-                // CSV Export Logic with BOM for Arabic support
                 document.getElementById('btn-download').onclick = () => {
-                    if (!currentLogData || currentLogData.length === 0) return notify('لا توجد بيانات للتنزيل', true);
-                    const sub = logSub.value;
-                    const dateVal = document.getElementById('log-date').value;
-                    
-                    let csvContent = "\uFEFF"; // BOM for Excel Arabic support
-                    csvContent += "ت,الاسم الرباعي,المادة,التاريخ,وقت الحضور\n";
-
-                    currentLogData.forEach((item, index) => {
-                        const name = item.studentName.replace(/,/g, " "); // Handle commas in names
-                        const row = `${index + 1},${name},${sub},${dateVal},${item.time}`;
-                        csvContent += row + "\n";
+                    if (!currentLogData.length) return notify('لا بيانات', true);
+                    let csv = "\uFEFFت,الاسم,المادة,التاريخ,الوقت\n";
+                    currentLogData.forEach((i, idx) => csv += `${idx+1},${i.studentName},${i.subject},${i.date},${i.time}\n`);
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `حضور_${logSub.value}.csv`; link.click();
+                };
+                document.getElementById('btn-smart-report').onclick = () => {
+                    document.getElementById('smart-report-modal').classList.add('active');
+                    const srWeek = document.getElementById('sr-week-select'); srWeek.innerHTML = '';
+                    for(let i=1; i<=16; i++) srWeek.innerHTML += `<option value="${i}">الأسبوع ${i}</option>`;
+                };
+                document.getElementById('btn-generate-report').onclick = async () => {
+                    const wNum = document.getElementById('sr-week-select').value;
+                    const day = document.getElementById('sr-day-select').value;
+                    const res = document.getElementById('report-results');
+                    const wSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'weeks', `${adminStage}_${adminType}_${adminGroup}_${wNum}`));
+                    if (!wSnap.exists() || !wSnap.data().days[day]?.date) return res.innerHTML = '<p class="text-center text-red-500 font-bold">اليوم غير مفعل</p>';
+                    const dayCfg = wSnap.data().days[day];
+                    const allStus = await prefetchStudents();
+                    const attSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup), where('date', '==', dayCfg.date)));
+                    const attMap = {}; attSnap.forEach(d => { if(!attMap[d.data().studentId]) attMap[d.data().studentId] = new Set(); attMap[d.data().studentId].add(d.data().subject); });
+                    let html = `<div class="text-center text-xs font-bold mb-4">التاريخ: ${dayCfg.date}</div>`;
+                    Object.entries(allStus).forEach(([uid, name]) => {
+                        const sAtt = attMap[uid] || new Set(); const miss = dayCfg.subjects.filter(s => !sAtt.has(s));
+                        html += `<div class="p-2 border-b flex justify-between items-center"><span class="text-[10px] font-bold">${name}</span><span class="${miss.length ? 'text-red-500' : 'text-green-600'} text-[9px] font-black">${miss.length ? 'نقص: ' + miss.join(',') : 'حضور كامل'}</span></div>`;
                     });
-
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `حضور_${sub}_${dateVal}.csv`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    res.innerHTML = html;
                 };
-
-                document.getElementById('btn-add-manual').onclick = async () => {
-                    if (!logSub.value || logSub.value.includes('تحميل') || logSub.value.includes('توجد')) return notify('اختر مادة أولاً', true);
-                    const students = await prefetchStudents();
-                    const sel = document.getElementById('manual-stu-select'); sel.innerHTML = '<option value="">اختر الطالب...</option>';
-                    Object.entries(students).forEach(([uid, name]) => { sel.innerHTML += `<option value="${uid}">${name}</option>`; });
-                    document.getElementById('manual-modal').classList.add('active');
-                };
-                document.getElementById('btn-confirm-manual').onclick = async () => {
-                    const uid = document.getElementById('manual-stu-select').value;
-                    if (!uid) return notify('يرجى اختيار طالب', true);
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), { studentId: uid, studentName: localStudentsCache[uid], subject: logSub.value, stage: adminStage, type: adminType, date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('ar-EG'), timestamp: serverTimestamp() });
-                    notify('تمت الإضافة يدوياً'); document.getElementById('manual-modal').classList.remove('active');
-                };
-                document.getElementById('manual-close-btn').onclick = () => document.getElementById('manual-modal').classList.remove('active');
-                
-                document.getElementById('btn-manage-subjects').onclick = () => {
-                    document.getElementById('pin-modal').classList.add('active');
-                    document.getElementById('subject-pin-input').value = '';
-                    document.getElementById('subject-pin-input').focus();
-                };
-
-                document.getElementById('btn-pin-cancel').onclick = () => document.getElementById('pin-modal').classList.remove('active');
+                document.getElementById('sr-close-btn').onclick = () => document.getElementById('smart-report-modal').classList.remove('active');
+                document.getElementById('btn-manage-subjects').onclick = () => { document.getElementById('pin-modal').classList.add('active'); };
                 document.getElementById('btn-pin-confirm').onclick = () => {
                     if (document.getElementById('subject-pin-input').value === "122109") {
-                        document.getElementById('pin-modal').classList.remove('active');
-                        openSubjectModal();
-                    } else { notify('الرمز غير صحيح', true); }
+                        document.getElementById('pin-modal').classList.remove('active'); document.getElementById('subject-modal').classList.add('active');
+                        onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup)), (snap) => {
+                            const list = document.getElementById('current-subjects-list'); list.innerHTML = '';
+                            snap.forEach(d => { const b = document.createElement('button'); b.className = "bg-red-50 text-red-500 px-3 py-1 rounded-lg text-xs font-bold m-1"; b.innerText = d.data().name; b.onclick = () => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects', d.id)); list.appendChild(b); });
+                        });
+                    } else notify('خطأ', true);
                 };
-
-                const openSubjectModal = () => {
-                    document.getElementById('sub-modal-stage').innerText = adminStage; document.getElementById('sub-modal-type').innerText = adminType;
-                    onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), where('stage', '==', adminStage), where('type', '==', adminType)), (snap) => {
-                        const list = document.getElementById('current-subjects-list'); list.innerHTML = '';
-                        snap.forEach(d => {
-                             const b = document.createElement('button'); b.className = "bg-red-50 text-red-500 px-3 py-1 rounded-lg text-xs font-bold border border-red-100 flex items-center gap-1 m-1 hover:bg-red-100 transition-colors";
-                             b.innerHTML = `${d.data().name} <i data-lucide="x" size="10"></i>`; b.onclick = () => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'subjects', d.id)); list.appendChild(b);
-                        }); lucide.createIcons();
-                    });
-                    document.getElementById('subject-modal').classList.add('active');
-                };
-
+                document.getElementById('btn-pin-cancel').onclick = () => document.getElementById('pin-modal').classList.remove('active');
                 document.getElementById('btn-save-subject').onclick = async () => {
                     const name = document.getElementById('new-subject-name').value.trim();
-                    if(name) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), { name, stage: adminStage, type: adminType });
+                    if(name) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'subjects'), { name, stage: adminStage, type: adminType, group: adminGroup });
                     document.getElementById('new-subject-name').value = '';
                 };
                 document.getElementById('subject-close-btn').onclick = () => document.getElementById('subject-modal').classList.remove('active');
+                document.getElementById('btn-manage-weeks').onclick = async () => {
+                    const ws = document.getElementById('wm-week-select'); ws.innerHTML = '';
+                    for (let i = 1; i <= 16; i++) ws.innerHTML += `<option value="${i}">الأسبوع ${i}</option>`;
+                    document.getElementById('weeks-modal').classList.add('active');
+                    const loadW = async (n) => {
+                        const s = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'weeks', `${adminStage}_${adminType}_${adminGroup}_${n}`));
+                        const d = s.exists() ? s.data().days : {};
+                        const container = document.getElementById('days-container'); container.innerHTML = '';
+                        ['sun', 'mon', 'tue', 'wed', 'thu'].forEach(day => {
+                            const data = d[day] || { date: '', subjects: [] };
+                            container.innerHTML += `<div class="bg-slate-50 p-3 rounded-xl mb-2"><input type="date" id="d-${day}-date" value="${data.date}" class="w-full mb-1 p-1 text-xs"><input type="text" id="d-${day}-subs" value="${data.subjects.join(',')}" placeholder="المواد" class="w-full p-1 text-xs"></div>`;
+                        });
+                    };
+                    loadW(1); ws.onchange = (e) => loadW(e.target.value);
+                    document.getElementById('btn-save-week').onclick = async () => {
+                        const n = ws.value; const daysData = {};
+                        ['sun', 'mon', 'tue', 'wed', 'thu'].forEach(day => {
+                            daysData[day] = { date: document.getElementById(`d-${day}-date`).value, subjects: document.getElementById(`d-${day}-subs`).value.split(',').filter(x=>x).map(x=>x.trim()) };
+                        });
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'weeks', `${adminStage}_${adminType}_${adminGroup}_${n}`), { stage: adminStage, type: adminType, group: adminGroup, weekNum: parseInt(n), days: daysData });
+                        notify('تم الحفظ');
+                    };
+                };
+                document.getElementById('weeks-close-btn').onclick = () => document.getElementById('weeks-modal').classList.remove('active');
             };
 
             const drawMembers = () => {
-                document.getElementById('admin-content').innerHTML = `<div class="space-y-4 animate-in"><h4 class="font-black text-slate-800">إدارة الطلاب</h4><div id="members-list" class="space-y-2 max-h-[350px] overflow-y-auto no-scrollbar"></div></div>`;
-                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), where('stage', '==', adminStage), where('type', '==', adminType)), (snap) => {
-                      document.getElementById('members-list').innerHTML = snap.docs.map(d => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border shadow-sm animate-in"><div><p class="font-bold text-sm text-slate-800">${d.data().name}</p><p class="text-[10px] text-blue-600 font-black">الرمز: ${d.data().pin}</p></div><button onclick="window.deleteEntry('mem', '${d.id}')" class="text-red-500 p-2 hover:bg-red-50 rounded-full transition-all"><i data-lucide="trash-2" size="20"></i></button></div>`).join('') || '<p class="text-center py-10 text-slate-300">لا يوجد طلاب</p>';
+                document.getElementById('admin-content').innerHTML = `<div class="space-y-4"><h4 class="font-black text-slate-800">إدارة الطلاب</h4><div id="members-list" class="space-y-2 max-h-[350px] overflow-y-auto no-scrollbar"></div></div>`;
+                onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'members'), where('stage', '==', adminStage), where('type', '==', adminType), where('group', '==', adminGroup)), (snap) => {
+                      document.getElementById('members-list').innerHTML = snap.docs.map(d => `<div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border"><div><p class="font-bold text-sm text-slate-800">${d.data().name}</p><p class="text-[10px] text-blue-600 font-black">الرمز: ${d.data().pin}</p></div><button onclick="window.deleteEntry('mem', '${d.id}')" class="text-red-500 p-2"><i data-lucide="trash-2" size="20"></i></button></div>`).join('');
                       lucide.createIcons();
                 });
             };
@@ -474,5 +676,17 @@
         };
         startApp();
     </script>
+
+    <div id="subject-modal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-[2rem] p-6 w-full max-sm shadow-2xl border">
+            <h3 class="text-lg font-black mb-4 text-center">المواد السريعة</h3>
+            <div class="space-y-4">
+                <input id="new-subject-name" type="text" placeholder="اسم المادة" class="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold">
+                <button id="btn-save-subject" class="w-full py-3 bg-indigo-600 text-white font-black rounded-2xl">إضافة</button>
+                <div id="current-subjects-list" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto justify-center mt-4"></div>
+                <button id="subject-close-btn" class="w-full py-2 text-slate-400 font-bold bg-slate-50 rounded-xl">إغلاق</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
